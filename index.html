@@ -65,6 +65,29 @@
 </head>
 <body>
     <div id="root"></div>
-    <script type="module" src="./index.tsx"></script>
+    <!-- Load the esm.sh/run loader to handle TSX transpilation -->
+    <script type="module" src="https://esm.sh/run"></script>
+    
+    <!-- 
+      By inlining the entry point code, we avoid the browser's MIME type check for .tsx files.
+      The esm.sh/run loader will handle the sub-imports (App.tsx, etc.) via fetch.
+    -->
+    <script type="text/tsx">
+      import React from 'react';
+      import ReactDOM from 'react-dom/client';
+      import App from './App.tsx';
+
+      const rootElement = document.getElementById('root');
+      if (rootElement) {
+        const root = ReactDOM.createRoot(rootElement);
+        root.render(
+          <React.StrictMode>
+            <App />
+          </React.StrictMode>
+        );
+      } else {
+        console.error("Could not find root element to mount to");
+      }
+    </script>
 </body>
 </html>

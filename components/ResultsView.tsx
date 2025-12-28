@@ -1,6 +1,6 @@
 
 import React, { useState, useMemo, useRef, useEffect } from 'react';
-import { CalculatedResults, TimeFrame, IncomeState } from '../types';
+import { CalculatedResults, TimeFrame, IncomeState } from '../types.ts';
 import { 
   PieChart, Pie, Cell, ResponsiveContainer, Tooltip, 
   BarChart, Bar, XAxis, YAxis, 
@@ -24,22 +24,17 @@ const CHART_TYPES: { type: ChartType; label: string }[] = [
   { type: 'RADAR', label: 'Balance Profile' },
 ];
 
-const PREFS_STORAGE_KEY = 'income-architect-prefs-v2';
+const PREFS_STORAGE_KEY = 'income-architect-prefs-v3';
 
 const getSpectralColor = (ratio: number) => {
   const hue = 240 * (1 - Math.min(1, Math.max(0, ratio)));
   return `hsl(${hue}, 75%, 50%)`;
 };
 
-/**
- * Custom Tooltip component optimized for the dark architect aesthetic.
- * Robustly handles name extraction for all Recharts data structures.
- */
 const CustomTooltip = ({ active, payload, label }: any) => {
   if (active && payload && payload.length) {
     const data = payload[0].payload;
-    // RadialBar often nests data or uses 'name' on the payload itself
-    const itemName = data.name || payload[0].name || label || 'Item';
+    const itemName = data.name || payload[0].name || (typeof label === 'string' ? label : 'Category');
     const itemValue = payload[0].value || data.value || 0;
     
     return (
@@ -62,7 +57,6 @@ export const ResultsView: React.FC<Props> = ({ results, income }) => {
   const [isReady, setIsReady] = useState(false);
   const touchStart = useRef<number | null>(null);
 
-  // Load Preferences
   useEffect(() => {
     const saved = localStorage.getItem(PREFS_STORAGE_KEY);
     if (saved) {
@@ -77,7 +71,6 @@ export const ResultsView: React.FC<Props> = ({ results, income }) => {
     setIsReady(true);
   }, []);
 
-  // Save Preferences
   useEffect(() => {
     if (isReady) {
       localStorage.setItem(PREFS_STORAGE_KEY, JSON.stringify({ period, chartIndex }));
@@ -275,6 +268,7 @@ export const ResultsView: React.FC<Props> = ({ results, income }) => {
                    barSize={12} 
                    data={chartData}
                  >
+                   <YAxis type="category" dataKey="name" hide />
                    <RadialBar
                      background={{ fill: '#171717' }}
                      dataKey="value"
@@ -301,7 +295,6 @@ export const ResultsView: React.FC<Props> = ({ results, income }) => {
                   <Treemap
                     data={chartData}
                     dataKey="value"
-                    nameKey="name"
                     aspectRatio={16 / 9}
                     stroke="#000"
                     fill="#10b981"
