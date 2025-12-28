@@ -1,23 +1,17 @@
 
 import React, { useState } from 'react';
-import { Expense, TimeFrame } from '../types';
-import { FREQUENCY_OPTIONS } from '../constants';
-import { convertToAnnual } from '../utils/calculations';
+import { Expense, TimeFrame } from '../types.ts';
+import { FREQUENCY_OPTIONS } from '../constants.ts';
+import { convertToAnnual } from '../utils/calculations.ts';
 
 interface Props {
   expenses: Expense[];
   onUpdate: (expenses: Expense[]) => void;
 }
 
-/**
- * Generates a spectral color: Red (High Impact) -> Blue (Low Impact)
- * ratio 1.0 (Most expensive) = Red (Hue 0)
- * ratio 0.0 (Least expensive) = Blue (Hue 240)
- */
 const getSpectralColor = (amount: number, maxAmount: number) => {
   const safeMax = maxAmount || 1;
   const ratio = Math.min(1, amount / safeMax);
-  // Invert ratio: 1.0 -> 0 hue (red), 0.0 -> 240 hue (blue)
   const hue = 240 * (1 - ratio);
   return `hsl(${hue}, 75%, 50%)`;
 };
@@ -154,7 +148,6 @@ const ExpenseRow: React.FC<RowProps> = ({ exp, parentId, expenses, onUpdate, max
     <div className={`space-y-1 ${parentId ? 'ml-6 border-l border-neutral-800 pl-4 mt-1' : ''}`}>
       <div className="glass group p-3 md:p-4 rounded-xl flex items-center justify-between border-transparent hover:border-emerald-500/20 transition-all">
         <div className="flex items-center space-x-3 min-w-0">
-          {/* Custom Styled Color Picker Swatch */}
           <div 
             className="relative w-6 h-6 rounded-lg overflow-hidden shrink-0 border border-white/10 shadow-lg cursor-pointer ring-1 ring-white/5 transition-transform active:scale-95"
             style={{ backgroundColor: exp.color }}
@@ -218,7 +211,6 @@ export const ExpenseTracker: React.FC<Props> = ({ expenses, onUpdate }) => {
   const [frequency, setFrequency] = useState<TimeFrame>(TimeFrame.MONTHLY);
   const [isOpen, setIsOpen] = useState(false);
 
-  // Use the total calculated value of top-level items for color scaling
   const maxExpenseValue = Math.max(...expenses.map(e => getRowDisplayTotal(e)), 100);
 
   const handleAddTopLevel = () => {
@@ -301,10 +293,6 @@ export const ExpenseTracker: React.FC<Props> = ({ expenses, onUpdate }) => {
           >
             Finalize Deployment
           </button>
-          <div className="flex items-center justify-center space-x-2 text-[9px] text-neutral-700 font-bold uppercase tracking-tighter">
-            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
-            <span>Tip: 0 amount creates a parent container</span>
-          </div>
         </div>
       )}
 

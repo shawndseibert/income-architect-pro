@@ -1,11 +1,11 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
-import { IncomeInput } from './components/IncomeInput';
-import { ExpenseTracker } from './components/ExpenseTracker';
-import { ResultsView } from './components/ResultsView';
-import { IncomeState, Expense } from './types';
-import { INITIAL_INCOME_STATE } from './constants';
-import { getResults } from './utils/calculations';
+import { IncomeInput } from './components/IncomeInput.tsx';
+import { ExpenseTracker } from './components/ExpenseTracker.tsx';
+import { ResultsView } from './components/ResultsView.tsx';
+import { IncomeState, Expense } from './types.ts';
+import { INITIAL_INCOME_STATE } from './constants.ts';
+import { getResults } from './utils/calculations.ts';
 
 const STORAGE_KEY = 'income-architect-v1';
 
