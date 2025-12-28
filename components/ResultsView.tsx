@@ -24,7 +24,7 @@ const CHART_TYPES: { type: ChartType; label: string }[] = [
   { type: 'RADAR', label: 'Balance Profile' },
 ];
 
-const PREFS_STORAGE_KEY = 'income-architect-prefs';
+const PREFS_STORAGE_KEY = 'income-architect-prefs-v2';
 
 const getSpectralColor = (ratio: number) => {
   const hue = 240 * (1 - Math.min(1, Math.max(0, ratio)));
@@ -32,22 +32,23 @@ const getSpectralColor = (ratio: number) => {
 };
 
 /**
- * Custom Tooltip component to ensure consistency and fix label display issues
- * across different Recharts visualization types.
+ * Custom Tooltip component optimized for the dark architect aesthetic.
+ * Robustly handles name extraction for all Recharts data structures.
  */
-const CustomTooltip = ({ active, payload }: any) => {
+const CustomTooltip = ({ active, payload, label }: any) => {
   if (active && payload && payload.length) {
     const data = payload[0].payload;
-    // Handle specific structure for Treemap which might wrap data differently
-    const item = data.name ? data : (payload[0].name ? { name: payload[0].name, value: payload[0].value } : data);
+    // RadialBar often nests data or uses 'name' on the payload itself
+    const itemName = data.name || payload[0].name || label || 'Item';
+    const itemValue = payload[0].value || data.value || 0;
     
     return (
       <div className="bg-[#121212] border border-neutral-800 p-3 rounded-xl shadow-2xl backdrop-blur-md animate-in fade-in zoom-in-95 duration-200">
         <p className="text-[9px] font-black uppercase tracking-widest text-emerald-500 mb-1 border-b border-white/5 pb-1">
-          {item.name || 'Component'}
+          {itemName}
         </p>
         <p className="text-sm font-bold text-white retro-mono mt-1">
-          ${Math.round(item.value).toLocaleString()}
+          ${Math.round(itemValue).toLocaleString()}
         </p>
       </div>
     );
@@ -70,7 +71,7 @@ export const ResultsView: React.FC<Props> = ({ results, income }) => {
         if (savedPeriod) setPeriod(savedPeriod);
         if (typeof savedIndex === 'number') setChartIndex(savedIndex);
       } catch (e) {
-        console.error("Failed to load prefs", e);
+        console.error("Failed to load preferences", e);
       }
     }
     setIsReady(true);
@@ -256,6 +257,7 @@ export const ResultsView: React.FC<Props> = ({ results, income }) => {
                      outerRadius={105}
                      paddingAngle={4}
                      dataKey="value"
+                     nameKey="name"
                      stroke="none"
                    >
                      {chartData.map((entry, index) => (
@@ -276,6 +278,7 @@ export const ResultsView: React.FC<Props> = ({ results, income }) => {
                    <RadialBar
                      background={{ fill: '#171717' }}
                      dataKey="value"
+                     nameKey="name"
                      cornerRadius={10}
                    />
                    <Tooltip content={<CustomTooltip />} />
@@ -288,7 +291,7 @@ export const ResultsView: React.FC<Props> = ({ results, income }) => {
                       content={<CustomTooltip />}
                       cursor={{ fill: 'rgba(255,255,255,0.05)' }}
                     />
-                    <Bar dataKey="value" radius={[0, 10, 10, 0]}>
+                    <Bar dataKey="value" nameKey="name" radius={[0, 10, 10, 0]}>
                        {chartData.map((entry, index) => (
                          <Cell key={`cell-${index}`} fill={entry.color} />
                        ))}
@@ -298,6 +301,7 @@ export const ResultsView: React.FC<Props> = ({ results, income }) => {
                   <Treemap
                     data={chartData}
                     dataKey="value"
+                    nameKey="name"
                     aspectRatio={16 / 9}
                     stroke="#000"
                     fill="#10b981"
