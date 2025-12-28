@@ -2,17 +2,14 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0">
     <title>Income Architect Pro</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
-        :root {
-            --bg: #050505;
-            --emerald: #10b981;
-        }
+        :root { --bg: #050505; --emerald: #10b981; }
         body {
             font-family: 'Inter', sans-serif;
             background-color: var(--bg);
@@ -26,15 +23,44 @@
             backdrop-filter: blur(16px);
             border: 1px solid rgba(255, 255, 255, 0.08);
         }
-        .glow-text { text-shadow: 0 0 15px rgba(16, 185, 129, 0.4); }
-        input::-webkit-outer-spin-button, input::-webkit-inner-spin-button {
-            -webkit-appearance: none; margin: 0;
-        }
+        .glow-text-green { text-shadow: 0 0 15px rgba(16, 185, 129, 0.4); }
+        input::-webkit-outer-spin-button, input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
         ::-webkit-scrollbar { width: 5px; }
         ::-webkit-scrollbar-track { background: #050505; }
         ::-webkit-scrollbar-thumb { background: #222; border-radius: 10px; }
         .animate-in { animation: fadeIn 0.4s ease-out; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        
+        input[type=range].custom-slider { 
+            -webkit-appearance: none; 
+            background: #171717;
+            height: 6px;
+            border-radius: 9999px;
+            outline: none;
+        }
+        input[type=range].custom-slider::-webkit-slider-thumb {
+            -webkit-appearance: none; 
+            height: 18px; 
+            width: 18px; 
+            border-radius: 50%;
+            background: #10b981; 
+            cursor: pointer; 
+            box-shadow: 0 0 12px rgba(16, 185, 129, 0.5);
+            border: 2px solid #050505;
+            transition: transform 0.1s ease;
+        }
+        input[type=range].custom-slider::-webkit-slider-thumb:active {
+            transform: scale(1.2);
+        }
+        input[type=range].custom-slider::-moz-range-thumb {
+            height: 18px; 
+            width: 18px; 
+            border-radius: 50%;
+            background: #10b981; 
+            cursor: pointer; 
+            box-shadow: 0 0 12px rgba(16, 185, 129, 0.5);
+            border: 2px solid #050505;
+        }
     </style>
     <script type="importmap">
 {
@@ -60,7 +86,6 @@ import {
     RadialBarChart, RadialBar, Treemap
 } from 'recharts';
 
-// --- TYPES & CONSTANTS ---
 enum TimeFrame {
   HOURLY = 'Hourly', DAILY = 'Daily', WEEKLY = 'Weekly', 
   BIWEEKLY = 'Bi-Weekly', MONTHLY = 'Monthly', YEARLY = 'Yearly'
@@ -71,6 +96,36 @@ interface Expense {
   frequency: TimeFrame; color: string; subItems?: Expense[];
 }
 
+const STATE_TAX_RATES: Record<string, number> = {
+  'NONE': 0, 'AL': 0.05, 'AK': 0, 'AZ': 0.025, 'AR': 0.049, 'CA': 0.08, 'CO': 0.044, 'CT': 0.05, 'DE': 0.06, 'FL': 0,
+  'GA': 0.057, 'HI': 0.08, 'ID': 0.058, 'IL': 0.049, 'IN': 0.032, 'IA': 0.06, 'KS': 0.057, 'KY': 0.05, 'LA': 0.04,
+  'ME': 0.07, 'MD': 0.05, 'MA': 0.05, 'MI': 0.04, 'MN': 0.07, 'MS': 0.05, 'MO': 0.05, 'MT': 0.06, 'NE': 0.06,
+  'NV': 0, 'NH': 0, 'NJ': 0.06, 'NM': 0.05, 'NY': 0.06, 'NC': 0.047, 'ND': 0.02, 'OH': 0.03, 'OK': 0.04, 'OR': 0.09,
+  'PA': 0.03, 'RI': 0.05, 'SC': 0.07, 'SD': 0, 'TN': 0, 'TX': 0, 'UT': 0.048, 'VT': 0.06, 'VA': 0.05, 'WA': 0,
+  'WV': 0.06, 'WI': 0.05, 'WY': 0
+};
+
+const US_STATES = [
+  { code: 'NONE', name: 'No State Tax / Federal Only' },
+  { code: 'AL', name: 'Alabama' }, { code: 'AK', name: 'Alaska' }, { code: 'AZ', name: 'Arizona' },
+  { code: 'AR', name: 'Arkansas' }, { code: 'CA', name: 'California' }, { code: 'CO', name: 'Colorado' },
+  { code: 'CT', name: 'Connecticut' }, { code: 'DE', name: 'Delaware' }, { code: 'FL', name: 'Florida' },
+  { code: 'GA', name: 'Georgia' }, { code: 'HI', name: 'Hawaii' }, { code: 'ID', name: 'Idaho' },
+  { code: 'IL', name: 'Illinois' }, { code: 'IN', name: 'Indiana' }, { code: 'IA', name: 'Iowa' },
+  { code: 'KS', name: 'Kansas' }, { code: 'KY', name: 'Kentucky' }, { code: 'LA', name: 'Louisiana' },
+  { code: 'ME', name: 'Maine' }, { code: 'MD', name: 'Maryland' }, { code: 'MA', name: 'Massachusetts' },
+  { code: 'MI', name: 'Michigan' }, { code: 'MN', name: 'Minnesota' }, { code: 'MS', name: 'Mississippi' },
+  { code: 'MO', name: 'Missouri' }, { code: 'MT', name: 'Montana' }, { code: 'NE', name: 'Nebraska' },
+  { code: 'NV', name: 'Nevada' }, { code: 'NH', name: 'New Hampshire' }, { code: 'NJ', name: 'New Jersey' },
+  { code: 'NM', name: 'New Mexico' }, { code: 'NY', name: 'New York' }, { code: 'NC', name: 'North Carolina' },
+  { code: 'ND', name: 'North Dakota' }, { code: 'OH', name: 'Ohio' }, { code: 'OK', name: 'Oklahoma' },
+  { code: 'OR', name: 'Oregon' }, { code: 'PA', name: 'Pennsylvania' }, { code: 'RI', name: 'Rhode Island' },
+  { code: 'SC', name: 'South Carolina' }, { code: 'SD', name: 'South Dakota' }, { code: 'TN', name: 'Tennessee' },
+  { code: 'TX', name: 'Texas' }, { code: 'UT', name: 'Utah' }, { code: 'VT', name: 'Vermont' },
+  { code: 'VA', name: 'Virginia' }, { code: 'WA', name: 'Washington' }, { code: 'WV', name: 'West Virginia' },
+  { code: 'WI', name: 'Wisconsin' }, { code: 'WY', name: 'Wyoming' }
+];
+
 const TAX_BRACKETS = [
   { limit: 11600, rate: 0.10 }, { limit: 47150, rate: 0.12 },
   { limit: 100525, rate: 0.22 }, { limit: 191950, rate: 0.24 },
@@ -78,16 +133,11 @@ const TAX_BRACKETS = [
   { limit: Infinity, rate: 0.37 }
 ];
 
-const STATE_TAX_RATES: Record<string, number> = {
-  'NONE': 0, 'CA': 0.08, 'NY': 0.06, 'TX': 0, 'FL': 0, 'WA': 0, 'IL': 0.049, 'PA': 0.03
-};
-
-// --- LOGIC UTILS ---
-const convertToAnnual = (amount: number, tf: TimeFrame) => {
+const convertToAnnual = (amount: number, tf: TimeFrame, hpd = 8, dpw = 5): number => {
   if (!amount) return 0;
   switch (tf) {
-    case TimeFrame.HOURLY: return amount * 8 * 5 * 52;
-    case TimeFrame.DAILY: return amount * 5 * 52;
+    case TimeFrame.HOURLY: return amount * hpd * dpw * 52;
+    case TimeFrame.DAILY: return amount * dpw * 52;
     case TimeFrame.WEEKLY: return amount * 52;
     case TimeFrame.BIWEEKLY: return amount * 26;
     case TimeFrame.MONTHLY: return amount * 12;
@@ -96,14 +146,14 @@ const convertToAnnual = (amount: number, tf: TimeFrame) => {
   }
 };
 
-const getExpenseAnnual = (exp: Expense): number => {
-  const base = convertToAnnual(exp.amount, exp.frequency);
-  const subs = (exp.subItems || []).reduce((acc, s) => acc + getExpenseAnnual(s), 0);
-  return base + subs;
+const getExpenseAnnualValue = (exp: Expense): number => {
+  const baseAnnual = convertToAnnual(exp.amount, exp.frequency);
+  const subItemsAnnual = (exp.subItems || []).reduce((acc, sub) => acc + getExpenseAnnualValue(sub), 0);
+  return baseAnnual + subItemsAnnual;
 };
 
-const calculateTax = (gross: number) => {
-  let tax = 0; let rem = gross; let prev = 0;
+const calculateFederalTax = (annualGross: number): number => {
+  let tax = 0; let rem = annualGross; let prev = 0;
   for (const b of TAX_BRACKETS) {
     const taxable = Math.min(rem, b.limit - prev);
     if (taxable <= 0) break;
@@ -112,41 +162,205 @@ const calculateTax = (gross: number) => {
   return tax;
 };
 
-// --- SUB-COMPONENTS ---
+const getSpectralColor = (amount: number, maxAmount: number) => {
+  const ratio = Math.min(1, amount / (maxAmount || 1));
+  const hue = 240 * (1 - ratio);
+  return `hsl(${hue}, 75%, 50%)`;
+};
 
-const CustomTooltip = ({ active, payload }: any) => {
+const getRowDisplayTotal = (exp: Expense): number => {
+  const base = exp.amount; 
+  const subItemsSum = (exp.subItems || []).reduce((acc, sub) => {
+    const subAnnual = convertToAnnual(sub.amount, sub.frequency);
+    switch (exp.frequency) {
+      case TimeFrame.YEARLY: return acc + subAnnual;
+      case TimeFrame.MONTHLY: return acc + (subAnnual / 12);
+      case TimeFrame.BIWEEKLY: return acc + (subAnnual / 26);
+      case TimeFrame.WEEKLY: return acc + (subAnnual / 52);
+      case TimeFrame.DAILY: return acc + (subAnnual / 365);
+      case TimeFrame.HOURLY: return acc + (subAnnual / (8 * 5 * 52));
+      default: return acc + subAnnual;
+    }
+  }, 0);
+  return base + subItemsSum;
+};
+
+const CustomTooltip = ({ active, payload, label }: any) => {
   if (active && payload && payload.length) {
     const data = payload[0].payload;
+    const itemName = data.name || payload[0].name || (typeof label === 'string' ? label : 'Category');
+    const itemValue = payload[0].value || data.value || 0;
     return (
-      <div className="bg-[#121212] border border-neutral-800 p-3 rounded-xl shadow-2xl backdrop-blur-md">
-        <p className="text-[10px] font-black uppercase tracking-widest text-emerald-500 mb-1">{data.name}</p>
-        <p className="text-sm font-bold text-white retro-mono">${Math.round(payload[0].value).toLocaleString()}</p>
+      <div className="bg-[#121212] border border-neutral-800 p-3 rounded-xl shadow-2xl backdrop-blur-md animate-in zoom-in-95">
+        <p className="text-[9px] font-black uppercase tracking-widest text-emerald-500 mb-1 border-b border-white/5 pb-1">{itemName}</p>
+        <p className="text-sm font-bold text-white retro-mono mt-1">${Math.round(itemValue).toLocaleString()}</p>
       </div>
     );
   }
   return null;
 };
 
-const StatCard = ({ label, value, color }: any) => (
-  <div className="glass p-4 rounded-2xl border-emerald-500/10">
+const CustomizedTreemapContent = (props: any) => {
+  const { x, y, width, height, name, color, depth } = props;
+  // depth > 1 is a known issue in Recharts that creates ghost layers. 
+  // We strictly render only depth 1 for the visual blueprint.
+  if (depth > 1) return null;
+
+  return (
+    <g>
+      <rect
+        x={x}
+        y={y}
+        width={width}
+        height={height}
+        style={{
+          fill: color || '#10b981',
+          stroke: '#000',
+          strokeWidth: 2,
+          strokeOpacity: 0.6,
+        }}
+      />
+      {width > 45 && height > 25 && (
+        <text
+          x={x + width / 2}
+          y={y + height / 2}
+          textAnchor="middle"
+          dominantBaseline="middle"
+          fill="#fff"
+          stroke="none"
+          fontSize={width < 70 ? 9 : 11}
+          fontWeight="900"
+          style={{ 
+            pointerEvents: 'none', 
+            textTransform: 'uppercase', 
+            opacity: 1,
+            userSelect: 'none'
+          }}
+        >
+          {name}
+        </text>
+      )}
+    </g>
+  );
+};
+
+const SubItemForm = ({ onAdd, onCancel, parentLabel }: any) => {
+  const [l, setL] = useState('');
+  const [a, setA] = useState<number | ''>('');
+  const submit = () => { if (l) { onAdd(l, a === '' ? 0 : a); setL(''); setA(''); } };
+  return (
+    <div className="ml-6 glass p-5 rounded-2xl border-emerald-500/30 space-y-4 animate-in duration-200 shadow-2xl">
+      <div className="flex justify-between items-center">
+        <p className="text-[10px] uppercase font-black text-emerald-500 tracking-widest">Architecting sub-item: {parentLabel}</p>
+        <button onClick={onCancel} className="text-neutral-600 hover:text-white transition-colors text-lg">&times;</button>
+      </div>
+      <div className="flex flex-col space-y-3">
+        <input className="bg-neutral-950 border border-neutral-800 rounded-xl px-4 py-3 text-xs outline-none focus:border-emerald-500/50 text-white placeholder:text-neutral-700" placeholder="Sub-item name" value={l} onChange={e => setL(e.target.value)} />
+        <div className="flex space-x-2">
+          <input type="number" className="flex-grow bg-neutral-950 border border-neutral-800 rounded-xl px-4 py-3 text-xs outline-none focus:border-emerald-500/50 text-white placeholder:text-neutral-700 retro-mono" placeholder="0.00" value={a} onChange={e => setA(parseFloat(e.target.value) || '')} />
+          <button onClick={submit} className="bg-emerald-600 hover:bg-emerald-500 px-6 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all shadow-lg active:scale-95">Add</button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const ExpenseRow = ({ exp, parentId, expenses, onUpdate, maxExpense, triggerAdd }: any) => {
+  const [isAddingSub, setIsAddingSub] = useState(false);
+  const displayTotal = getRowDisplayTotal(exp);
+  const isContainer = exp.amount === 0;
+
+  const handleAddSub = (label: string, amount: number) => {
+    const color = getSpectralColor(amount, maxExpense);
+    const newSub: Expense = {
+      id: Math.random().toString(36).substr(2, 9),
+      label, amount, frequency: exp.frequency, color, subItems: []
+    };
+    const updated = expenses.map((e: Expense) => {
+      const findAndAdd = (item: Expense): Expense => {
+        if (item.id === exp.id) return { ...item, subItems: [...(item.subItems || []), newSub] };
+        if (item.subItems) return { ...item, subItems: item.subItems.map(findAndAdd) };
+        return item;
+      };
+      return findAndAdd(e);
+    });
+    onUpdate(updated);
+  };
+
+  const removeExpense = () => {
+    const findAndRemove = (list: Expense[]): Expense[] => list.filter(item => {
+      if (item.id === exp.id) return false;
+      if (item.subItems) item.subItems = findAndRemove(item.subItems);
+      return true;
+    });
+    onUpdate(findAndRemove([...expenses]));
+  };
+
+  const updateColor = (color: string) => {
+    const updated = expenses.map((e: Expense) => {
+      const findAndUpdate = (item: Expense): Expense => {
+        if (item.id === exp.id) return { ...item, color };
+        if (item.subItems) return { ...item, subItems: item.subItems.map(findAndUpdate) };
+        return item;
+      };
+      return findAndUpdate(e);
+    });
+    onUpdate(updated);
+  };
+
+  return (
+    <div className={`space-y-1 ${parentId ? 'ml-6 border-l border-neutral-800 pl-4 mt-1' : ''}`}>
+      <div className="glass group p-3 md:p-4 rounded-xl flex items-center justify-between border-transparent hover:border-emerald-500/20 transition-all">
+        <div className="flex items-center space-x-3 min-w-0">
+          <div className="relative w-6 h-6 rounded-lg overflow-hidden shrink-0 border border-white/10 shadow-lg cursor-pointer ring-1 ring-white/5 transition-transform active:scale-95" style={{ backgroundColor: exp.color }}>
+            <input type="color" value={exp.color} onChange={(e) => updateColor(e.target.value)} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
+          </div>
+          <div className="min-w-0">
+            <p className={`text-sm font-black truncate ${isContainer ? 'text-emerald-500' : 'text-neutral-200'}`}>{exp.label}</p>
+            <p className="text-[9px] uppercase tracking-widest text-neutral-600 font-black">{exp.frequency}</p>
+          </div>
+        </div>
+        <div className="flex items-center space-x-2 shrink-0">
+          <span className="retro-mono text-xs md:text-sm text-neutral-400 font-bold mr-1">
+            ${displayTotal.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+          </span>
+          {(isContainer || parentId) && (
+            <button onClick={() => triggerAdd ? triggerAdd() : setIsAddingSub(!isAddingSub)} className="w-7 h-7 flex items-center justify-center rounded-xl bg-emerald-600/5 text-emerald-500 hover:bg-emerald-600 hover:text-white transition-all shadow-sm">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="4"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+            </button>
+          )}
+          <button onClick={removeExpense} className="w-7 h-7 flex items-center justify-center rounded-xl text-neutral-700 hover:bg-red-500/10 hover:text-red-500 transition-all">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+          </button>
+        </div>
+      </div>
+      {isAddingSub && <SubItemForm onAdd={handleAddSub} onCancel={() => setIsAddingSub(false)} parentLabel={exp.label} />}
+      {exp.subItems?.map((sub: Expense) => <ExpenseRow key={sub.id} exp={sub} parentId={exp.id} expenses={expenses} onUpdate={onUpdate} maxExpense={maxExpense} triggerAdd={() => setIsAddingSub(true)} />)}
+    </div>
+  );
+};
+
+const StatBox = ({ label, value, subLabel, colorClass }: any) => (
+  <div className="glass p-4 rounded-2xl border-emerald-500/10 transition-transform active:scale-95">
     <span className="text-[9px] uppercase tracking-widest font-black text-neutral-500 block mb-1">{label}</span>
-    <div className={`text-xl font-bold retro-mono ${color}`}>${Math.round(value).toLocaleString()}</div>
+    <div className={`text-lg md:text-xl font-bold retro-mono ${colorClass}`}>
+      ${value.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+    </div>
+    <span className="text-[9px] text-neutral-600 uppercase font-bold">{subLabel}</span>
   </div>
 );
 
-// --- MAIN APP ---
-
 const App = () => {
-  const [income, setIncome] = useState({ amount: 0, tf: TimeFrame.HOURLY, state: 'NONE', isGross: true });
+  const [income, setIncome] = useState({ amount: 0, timeFrame: TimeFrame.HOURLY, state: 'NONE', isGross: true, hoursPerDay: 8, daysPerWeek: 5 });
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [period, setPeriod] = useState('Month');
-  const [chartIdx, setChartIdx] = useState(0);
-  const [showAddExpense, setShowAddExpense] = useState(false);
+  const [chartIndex, setChartIndex] = useState(0);
+  const [expenseAddOpen, setExpenseAddOpen] = useState(false);
+  const [newExp, setNewExp] = useState({ label: '', amount: 0, frequency: TimeFrame.MONTHLY });
   const touchStart = useRef<number | null>(null);
 
-  // Persistence
   useEffect(() => {
-    const saved = localStorage.getItem('income_arch_final_v5');
+    const saved = localStorage.getItem('income_arch_final_v12');
     if (saved) {
       const p = JSON.parse(saved);
       setIncome(p.income); setExpenses(p.expenses);
@@ -154,203 +368,289 @@ const App = () => {
   }, []);
 
   useEffect(() => {
-    localStorage.setItem('income_arch_final_v5', JSON.stringify({ income, expenses }));
+    localStorage.setItem('income_arch_final_v12', JSON.stringify({ income, expenses }));
   }, [income, expenses]);
 
   const results = useMemo(() => {
-    const annualGross = convertToAnnual(income.amount, income.tf);
-    const fedTax = income.isGross ? calculateTax(annualGross) : 0;
-    const stateTax = income.isGross ? annualGross * (STATE_TAX_RATES[income.state] || 0) : 0;
-    const totalTax = fedTax + stateTax;
-    
-    const expenseData = expenses.map(e => ({ 
-      name: e.label, 
-      value: getExpenseAnnual(e), 
-      color: e.color 
-    }));
-    const totalExp = expenseData.reduce((a, b) => a + b.value, 0);
-    const takeHome = Math.max(0, annualGross - totalTax - totalExp);
-    
-    const f = period === 'Year' ? 1 : period === 'Month' ? 1/12 : period === 'Week' ? 1/52 : 1/260;
-    
+    const annGross = convertToAnnual(income.amount, income.timeFrame, income.hoursPerDay, income.daysPerWeek);
+    let federalTax = 0, stateTaxValue = 0, netAnnual = 0;
+
+    if (income.isGross) {
+      federalTax = calculateFederalTax(annGross);
+      stateTaxValue = annGross * (STATE_TAX_RATES[income.state] || 0);
+      netAnnual = annGross - federalTax - stateTaxValue;
+    } else {
+      netAnnual = annGross;
+    }
+
+    const flatExpenses = expenses.map(exp => ({
+      name: exp.label, value: getExpenseAnnualValue(exp), color: exp.color
+    })).filter(item => item.value > 0);
+
+    const totalExpAnn = flatExpenses.reduce((acc, curr) => acc + curr.value, 0);
+    const takeHomeAnn = Math.max(0, netAnnual - totalExpAnn);
+    const factor = period === 'Year' ? 1 : period === 'Month' ? 1/12 : period === 'Week' ? 1/52 : 1/(income.daysPerWeek * 52 || 260);
+
     return {
-      takeHome: takeHome * f, gross: annualGross * f, tax: totalTax * f, exp: totalExp * f,
+      takeHome: takeHomeAnn * factor,
+      takeHomeAnnual: takeHomeAnn,
+      gross: annGross * factor,
+      tax: (federalTax + stateTaxValue) * factor,
+      exp: totalExpAnn * factor,
       chartData: [
-        { name: 'Liquid', value: takeHome * f, color: '#10b981' },
-        { name: 'Tax', value: totalTax * f, color: '#ef4444' },
-        ...expenseData.map(e => ({ ...e, value: e.value * f }))
-      ].filter(d => d.value > 0)
+        { name: 'Take Home', value: takeHomeAnn * factor, color: '#10b981', fill: '#10b981' },
+        { name: 'Federal Tax', value: federalTax * factor, color: '#ef4444', fill: '#ef4444' },
+        { name: 'State Tax', value: stateTaxValue * factor, color: '#b91c1c', fill: '#b91c1c' },
+        ...flatExpenses.map(e => ({ ...e, value: e.value * factor, fill: e.color }))
+      ].filter(d => d.value > 0),
+      breakdown: {
+        monthly: takeHomeAnn / 12,
+        weekly: takeHomeAnn / 52,
+        daily: takeHomeAnn / (income.daysPerWeek * 52 || 260),
+        hourly: takeHomeAnn / (income.hoursPerDay * income.daysPerWeek * 52 || 2080)
+      }
     };
   }, [income, expenses, period]);
 
-  const addExpense = (label: string, amount: number) => {
-    const newExp: Expense = {
-      id: Math.random().toString(36).substr(2, 9),
-      label: label || 'New Bill',
-      amount: amount || 0,
-      frequency: TimeFrame.MONTHLY,
-      color: `hsl(${Math.random() * 360}, 70%, 50%)`,
-      subItems: []
-    };
-    setExpenses([...expenses, newExp]);
+  const maxExpenseValue = useMemo(() => Math.max(...expenses.map(e => getRowDisplayTotal(e)), 100), [expenses]);
+
+  const addTopLevelExpense = () => {
+    if (newExp.label) {
+      const color = getSpectralColor(newExp.amount, maxExpenseValue);
+      setExpenses([...expenses, { 
+        id: Math.random().toString(36).substr(2, 9), 
+        label: newExp.label, amount: newExp.amount, frequency: newExp.frequency, color, subItems: [] 
+      }]);
+      setNewExp({ label: '', amount: 0, frequency: TimeFrame.MONTHLY });
+      setExpenseAddOpen(false);
+    }
   };
 
-  const handleSwipe = (e: React.TouchEvent) => {
+  const handleSwipe = (e: any) => {
     if (e.type === 'touchstart') touchStart.current = e.touches[0].clientX;
     if (e.type === 'touchend' && touchStart.current !== null) {
       const diff = touchStart.current - e.changedTouches[0].clientX;
-      if (Math.abs(diff) > 50) setChartIdx(prev => (diff > 0 ? (prev + 1) % 3 : (prev + 2) % 3));
+      if (Math.abs(diff) > 50) setChartIndex(prev => (diff > 0 ? (prev + 1) % 5 : (prev + 4) % 5));
       touchStart.current = null;
     }
   };
 
+  const CHART_LABELS = ['Allocation Donut', 'Impact Concentrics', 'Relative Weight', 'Volume Occupancy', 'Balance Profile'];
+
   return (
     <div className="min-h-screen pb-24">
-      {/* Header */}
       <nav className="fixed top-0 inset-x-0 glass z-50 px-6 py-4 flex justify-between items-center border-b border-white/5">
-        <div className="flex items-center space-x-2">
-          <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></div>
-          <h1 className="text-xs font-black uppercase tracking-[0.3em] text-white">Income <span className="text-emerald-500">Architect</span></h1>
-        </div>
-        <div className="flex bg-neutral-900 rounded-xl p-1 shadow-inner">
-          {['Year', 'Month', 'Week'].map(p => (
-            <button 
-              key={p} 
-              onClick={() => setPeriod(p)} 
-              className={`px-4 py-1.5 text-[9px] font-black rounded-lg transition-all ${period === p ? 'bg-emerald-600 text-white shadow-lg' : 'text-neutral-500 hover:text-neutral-300'}`}
-            >
-              {p.toUpperCase()}
-            </button>
+        <h1 className="text-xs font-black uppercase tracking-[0.3em] text-white">Income <span className="text-emerald-500">Architect</span></h1>
+        <div className="flex bg-neutral-900 rounded-lg p-1">
+          {['Year', 'Month', 'Week', 'Day'].map(p => (
+            <button key={p} onClick={() => setPeriod(p)} className={`px-4 py-1.5 text-[9px] font-black rounded-lg transition-all ${period === p ? 'bg-emerald-600 text-white shadow-lg' : 'text-neutral-500 hover:text-neutral-300'}`}>{p.toUpperCase()}</button>
           ))}
         </div>
       </nav>
 
-      {/* Content */}
       <main className="max-w-6xl mx-auto px-4 pt-24 grid grid-cols-1 lg:grid-cols-12 gap-8">
-        
-        {/* Input Column */}
-        <div className="lg:col-span-5 space-y-6 order-2 lg:order-1">
-          <section className="glass p-6 rounded-3xl border-emerald-500/10">
-            <h3 className="text-[10px] font-black uppercase tracking-widest text-emerald-500/60 mb-6">Revenue Module</h3>
-            <div className="space-y-4">
-              <div className="relative">
-                <span className="absolute left-5 top-1/2 -translate-y-1/2 text-xl font-bold text-emerald-500 opacity-40">$</span>
-                <input 
-                  type="number" value={income.amount || ''} 
-                  onChange={e => setIncome({...income, amount: parseFloat(e.target.value) || 0})}
-                  className="w-full bg-neutral-950 border border-neutral-800 rounded-2xl py-5 pl-12 pr-4 text-3xl retro-mono text-white outline-none focus:border-emerald-500/50 transition-all"
-                  placeholder="0.00"
-                />
+        <div className="lg:col-span-5 space-y-8 order-2 lg:order-1">
+          <section className="space-y-4">
+            <label className="block text-[10px] uppercase tracking-[0.2em] text-emerald-500 mb-3 font-black opacity-80">Revenue Architect & Jurisdiction</label>
+            <div className="flex flex-col gap-3">
+              <div className="relative w-full">
+                <span className="absolute left-5 top-1/2 -translate-y-1/2 text-xl text-emerald-500 font-black opacity-40">$</span>
+                <input type="number" value={income.amount || ''} onChange={(e) => setIncome({...income, amount: parseFloat(e.target.value) || 0})} className="w-full bg-neutral-900 border-2 border-neutral-800 focus:border-emerald-500/50 outline-none rounded-2xl py-5 pl-12 pr-4 text-3xl retro-mono text-white transition-all shadow-inner" placeholder="0.00" />
               </div>
-              <div className="grid grid-cols-3 gap-2">
-                <select value={income.tf} onChange={e => setIncome({...income, tf: e.target.value as TimeFrame})} className="bg-neutral-900 border border-neutral-800 rounded-xl px-3 py-4 text-[10px] font-black text-white outline-none appearance-none cursor-pointer">
-                  {Object.values(TimeFrame).map(t => <option key={t} value={t}>{t}</option>)}
-                </select>
-                <button onClick={() => setIncome({...income, isGross: !income.isGross})} className={`rounded-xl text-[10px] font-black transition-all ${income.isGross ? 'bg-emerald-600 text-white shadow-lg' : 'bg-neutral-800 text-neutral-500'}`}>{income.isGross ? 'GROSS' : 'NET'}</button>
-                <select value={income.state} onChange={e => setIncome({...income, state: e.target.value})} className="bg-neutral-900 border border-neutral-800 rounded-xl px-3 py-4 text-[10px] font-black text-white outline-none appearance-none cursor-pointer">
-                  <option value="NONE">FED ONLY</option>
-                  <option value="CA">CALIFORNIA</option>
-                  <option value="NY">NEW YORK</option>
-                  <option value="TX">TEXAS</option>
-                  <option value="WA">WASHINGTON</option>
-                </select>
+              <div className="flex flex-wrap items-center gap-3">
+                <div className="flex bg-neutral-900 border border-neutral-800 rounded-2xl p-1.5 shrink-0 h-[72px] items-center">
+                  <button onClick={() => setIncome({...income, isGross: true})} className={`px-5 h-full rounded-xl text-[11px] font-black transition-all uppercase tracking-widest ${income.isGross ? 'bg-emerald-600 text-white shadow-lg' : 'text-neutral-600 hover:text-neutral-400'}`}>Gross</button>
+                  <button onClick={() => setIncome({...income, isGross: false})} className={`px-5 h-full rounded-xl text-[11px] font-black transition-all uppercase tracking-widest ${!income.isGross ? 'bg-blue-600 text-white shadow-lg' : 'text-neutral-600 hover:text-neutral-400'}`}>Net</button>
+                </div>
+                <div className="relative flex-grow sm:flex-grow-0">
+                  <select value={income.timeFrame} onChange={(e) => setIncome({...income, timeFrame: e.target.value as TimeFrame})} className="w-full bg-neutral-900 border border-neutral-800 rounded-2xl h-[72px] px-6 text-[11px] font-black uppercase tracking-wider outline-none cursor-pointer focus:border-emerald-500/50 appearance-none text-neutral-300 min-w-[140px]">
+                    {Object.values(TimeFrame).map(opt => <option key={opt} value={opt}>{opt}</option>)}
+                  </select>
+                </div>
+                <div className="relative flex-grow">
+                  <select value={income.state} onChange={(e) => setIncome({...income, state: e.target.value})} className="w-full bg-neutral-900 border border-neutral-800 rounded-2xl h-[72px] px-6 text-[11px] font-black uppercase tracking-wider outline-none cursor-pointer focus:border-emerald-500/50 appearance-none text-neutral-300 min-w-[160px]">
+                    {US_STATES.map(s => <option key={s.code} value={s.code}>{s.code === 'NONE' ? 'Fed Only' : s.name}</option>)}
+                  </select>
+                </div>
               </div>
             </div>
-          </section>
 
-          <section className="glass p-6 rounded-3xl border-emerald-500/10">
-            <div className="flex justify-between items-center mb-6">
-              <h3 className="text-[10px] font-black uppercase tracking-widest text-emerald-500/60">Liability Architect</h3>
-              <button 
-                onClick={() => addExpense('', 0)}
-                className="bg-emerald-500/10 text-emerald-500 px-4 py-2 rounded-xl text-[9px] font-black uppercase border border-emerald-500/20 hover:bg-emerald-500/20"
-              >
-                + ADD ASSET
-              </button>
-            </div>
-            <div className="space-y-3">
-              {expenses.map(ex => (
-                <div key={ex.id} className="glass p-4 rounded-2xl flex items-center justify-between border-transparent hover:border-emerald-500/20 animate-in">
+            {(income.timeFrame === TimeFrame.HOURLY || income.timeFrame === TimeFrame.DAILY) && (
+              <div className="glass p-6 rounded-[2rem] flex flex-col justify-center space-y-5 border-white/5 animate-in">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-black text-neutral-500 uppercase tracking-widest">Base Schedule Architect</span>
                   <div className="flex items-center space-x-3">
-                    <div className="w-3 h-3 rounded-full shrink-0 shadow-sm" style={{backgroundColor: ex.color}} />
-                    <input className="bg-transparent border-none outline-none text-xs font-bold text-white w-24" value={ex.label} onChange={e => setExpenses(expenses.map(x => x.id === ex.id ? {...x, label: e.target.value} : x))} />
-                  </div>
-                  <div className="flex items-center space-x-3">
-                    <input type="number" className="bg-transparent border-none outline-none text-right text-xs retro-mono font-bold text-neutral-400 w-20" value={ex.amount || ''} onChange={e => setExpenses(expenses.map(x => x.id === ex.id ? {...x, amount: parseFloat(e.target.value) || 0} : x))} />
-                    <button onClick={() => setExpenses(expenses.filter(x => x.id !== ex.id))} className="text-neutral-700 hover:text-red-500 transition-colors">&times;</button>
+                    <span className="bg-emerald-500/10 text-emerald-400 px-3 py-1.5 rounded-lg text-[10px] retro-mono font-bold border border-emerald-500/20">{income.hoursPerDay}h/day</span>
+                    <span className="bg-emerald-500/10 text-emerald-400 px-3 py-1.5 rounded-lg text-[10px] retro-mono font-bold border border-emerald-500/20">{income.daysPerWeek}d/week</span>
                   </div>
                 </div>
-              ))}
-              {expenses.length === 0 && <div className="py-12 text-center text-[10px] uppercase font-bold text-neutral-800 tracking-widest">Blueprint empty</div>}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-8">
+                  <div className="space-y-3">
+                    <input type="range" min="1" max="24" value={income.hoursPerDay} onChange={(e) => setIncome({...income, hoursPerDay: parseInt(e.target.value)})} className="w-full custom-slider" />
+                  </div>
+                  <div className="space-y-3">
+                    <input type="range" min="1" max="7" value={income.daysPerWeek} onChange={(e) => setIncome({...income, daysPerWeek: parseInt(e.target.value)})} className="w-full custom-slider" />
+                  </div>
+                </div>
+              </div>
+            )}
+          </section>
+
+          <section className="space-y-4">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-xs uppercase tracking-[0.2em] text-neutral-600 font-black">Expense Blueprint</h3>
+              <button onClick={() => setExpenseAddOpen(!expenseAddOpen)} className={`px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border ${expenseAddOpen ? 'bg-neutral-800 border-neutral-700 text-white' : 'bg-emerald-500/10 border-emerald-500/20 text-emerald-500 hover:bg-emerald-500/20 shadow-lg shadow-emerald-500/5'}`}>
+                {expenseAddOpen ? 'Close Architect' : '+ Deploy Category'}
+              </button>
+            </div>
+            {expenseAddOpen && (
+              <div className="glass p-6 rounded-3xl mb-8 space-y-6 border-emerald-500/20 animate-in shadow-2xl">
+                <div className="space-y-4">
+                  <div className="flex flex-col space-y-1.5">
+                    <label className="text-[10px] font-black uppercase tracking-widest text-emerald-500/70 ml-1">Asset/Bill Label</label>
+                    <input type="text" placeholder="e.g. Housing, Tech Stack" value={newExp.label} onChange={(e) => setNewExp({...newExp, label: e.target.value})} className="bg-neutral-950 border border-neutral-800 rounded-2xl px-5 py-4 text-sm outline-none focus:border-emerald-500/50 text-white placeholder:text-neutral-800" />
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="flex flex-col space-y-1.5">
+                      <label className="text-[10px] font-black uppercase tracking-widest text-emerald-500/70 ml-1">Cost Architect ($)</label>
+                      <input type="number" placeholder="0.00" value={newExp.amount || ''} onChange={(e) => setNewExp({...newExp, amount: parseFloat(e.target.value) || 0})} className="bg-neutral-950 border border-neutral-800 rounded-2xl px-5 py-4 text-sm outline-none focus:border-emerald-500/50 text-white retro-mono placeholder:text-neutral-800" />
+                    </div>
+                    <div className="flex flex-col space-y-1.5">
+                      <label className="text-[10px] font-black uppercase tracking-widest text-emerald-500/70 ml-1">Cycle</label>
+                      <select value={newExp.frequency} onChange={(e) => setNewExp({...newExp, frequency: e.target.value as TimeFrame})} className="w-full bg-neutral-950 border border-neutral-800 rounded-2xl px-5 py-4 text-[11px] font-black uppercase outline-none text-neutral-300 appearance-none">
+                        {Object.values(TimeFrame).map(opt => <option key={opt} value={opt}>{opt}</option>)}
+                      </select>
+                    </div>
+                  </div>
+                </div>
+                <button onClick={addTopLevelExpense} disabled={!newExp.label} className="w-full bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white text-[12px] font-black py-4 rounded-2xl transition-all uppercase tracking-[0.3em] shadow-xl shadow-emerald-500/20 active:scale-[0.98]">Finalize Deployment</button>
+              </div>
+            )}
+            <div className="space-y-3">
+              {expenses.length === 0 ? (
+                <div className="glass p-16 rounded-[2.5rem] border-dashed border-neutral-800/50 flex flex-col items-center justify-center text-center">
+                  <div className="w-14 h-14 rounded-3xl bg-neutral-900/50 flex items-center justify-center mb-6 text-neutral-700 border border-white/5">
+                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" /></svg>
+                  </div>
+                  <p className="text-xs text-neutral-700 font-black uppercase tracking-[0.2em]">Blueprint Empty</p>
+                </div>
+              ) : (
+                expenses.map((exp) => <ExpenseRow key={exp.id} exp={exp} parentId={null} expenses={expenses} onUpdate={setExpenses} maxExpense={maxExpenseValue} />)
+              )}
             </div>
           </section>
         </div>
 
-        {/* Output Column */}
         <div className="lg:col-span-7 space-y-6 order-1 lg:order-2 lg:sticky lg:top-24">
-          <section className="glass rounded-[2.5rem] p-8 border-emerald-500/20 bg-gradient-to-br from-[#0a0a0a] to-black relative overflow-hidden">
-            <div className="absolute top-0 right-0 p-8 opacity-5">
-               <svg width="120" height="120" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" /></svg>
+          <section className="relative overflow-hidden glass p-6 md:p-8 rounded-[2.5rem] border-emerald-500/20 bg-gradient-to-br from-[#0a0a0a] to-black">
+            <div className="absolute top-0 right-0 p-8 opacity-10">
+              <svg width="120" height="120" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" className="text-emerald-500"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" /></svg>
             </div>
-            <span className="text-[10px] uppercase font-black tracking-[0.2em] text-emerald-500/80">Net Disposable ({period})</span>
-            <h2 className="text-6xl md:text-8xl font-black text-white glow-text mt-2 retro-mono break-all">${Math.round(results.takeHome).toLocaleString()}</h2>
-            <div className="grid grid-cols-3 gap-4 mt-8 pt-8 border-t border-white/5">
-              <StatCard label="GROSS" value={results.gross} color="text-neutral-400" />
-              <StatCard label="TAXES" value={results.tax} color="text-red-500/80" />
-              <StatCard label="BILLS" value={results.exp} color="text-blue-500/80" />
+            <span className="text-xs uppercase tracking-[0.2em] font-black text-emerald-500/70 mb-2 block">Take-Home ({period})</span>
+            <div className="flex flex-col">
+              <h2 className="text-4xl md:text-8xl font-black text-white glow-text-green mt-2 leading-[0.8] retro-mono break-all mb-4">${Math.round(results.takeHome).toLocaleString()}</h2>
+              <div className="flex items-center space-x-2 mt-6">
+                 <span className="text-[10px] uppercase font-black text-emerald-500/50 tracking-tighter">Liquid Capital Remaining</span>
+              </div>
+            </div>
+            <div className="flex flex-wrap gap-x-4 gap-y-2 mt-8 pt-8 border-t border-white/5">
+              <div className="flex items-center space-x-2"><div className="w-2 h-2 rounded-full bg-emerald-500"></div><span className="text-[9px] font-bold text-neutral-400 uppercase tracking-widest">Gross: ${Math.round(results.gross).toLocaleString()}</span></div>
+              <div className="flex items-center space-x-2"><div className="w-2 h-2 rounded-full bg-red-500"></div><span className="text-[9px] font-bold text-neutral-400 uppercase tracking-widest">Tax: ${Math.round(results.tax).toLocaleString()}</span></div>
+              <div className="flex items-center space-x-2"><div className="w-2 h-2 rounded-full bg-blue-500"></div><span className="text-[9px] font-bold text-neutral-400 uppercase tracking-widest">Bills: ${Math.round(results.exp).toLocaleString()}</span></div>
             </div>
           </section>
 
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+            <StatBox label="Yearly" value={results.takeHomeAnnual} subLabel="Net Profit" colorClass="text-emerald-400" />
+            <StatBox label="Monthly" value={results.breakdown.monthly} subLabel="Post-Tax" colorClass="text-emerald-400/80" />
+            <StatBox label="Weekly" value={results.breakdown.weekly} subLabel="Disposable" colorClass="text-emerald-400/60" />
+            <StatBox label="Hourly" value={results.breakdown.hourly} subLabel="Production" colorClass="text-emerald-400/40" />
+          </div>
+
           <section 
-            className="glass p-6 rounded-[2.5rem] h-[400px] flex flex-col relative select-none"
-            onTouchStart={handleSwipe}
-            onTouchEnd={handleSwipe}
+            className="glass p-6 rounded-[2.5rem] h-[450px] flex flex-col relative select-none overflow-hidden"
+            onTouchStart={handleSwipe} onTouchEnd={handleSwipe}
           >
-             <div className="flex justify-between items-center mb-8">
-                <h4 className="text-[10px] font-black uppercase tracking-widest text-emerald-500/60">Asset Analytics</h4>
-                <div className="flex gap-1.5">
-                  {[0, 1, 2].map(i => (
-                    <button key={i} onClick={() => setChartIdx(i)} className={`w-2 h-2 rounded-full transition-all ${chartIdx === i ? 'bg-emerald-500 w-5' : 'bg-neutral-800 hover:bg-neutral-700'}`} />
-                  ))}
+             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+                <div className="flex flex-col space-y-2">
+                  <h4 className="text-[10px] uppercase font-black text-emerald-500 tracking-[0.2em]">{CHART_LABELS[chartIndex]}</h4>
+                  <div className="flex space-x-1.5">
+                    {CHART_LABELS.map((_, i) => (
+                      <button key={i} onClick={() => setChartIndex(i)} className={`w-2 h-2 rounded-full transition-all duration-300 ${i === chartIndex ? 'bg-emerald-500 w-5' : 'bg-neutral-800 hover:bg-neutral-700'}`} />
+                    ))}
+                  </div>
+                </div>
+                <div className="flex items-center space-x-4 text-[8px] font-black uppercase tracking-tighter text-neutral-700">
+                   <div className="flex items-center space-x-1">
+                      <div className="w-2 h-2 rounded-full bg-red-500"></div>
+                      <span>High Impact</span>
+                   </div>
+                   <div className="flex items-center space-x-1">
+                      <div className="w-2 h-2 rounded-full bg-blue-500"></div>
+                      <span>Low Impact</span>
+                   </div>
                 </div>
              </div>
              <div className="flex-grow">
                <ResponsiveContainer width="100%" height="100%">
-                  {chartIdx === 0 ? (
+                  {chartIndex === 0 ? (
                     <PieChart>
-                      <Pie data={results.chartData} innerRadius={65} outerRadius={95} paddingAngle={5} dataKey="value" stroke="none">
+                      <Pie data={results.chartData} innerRadius={75} outerRadius={110} paddingAngle={4} dataKey="value" stroke="none">
                         {results.chartData.map((e, i) => <Cell key={i} fill={e.color} />)}
                       </Pie>
                       <RechartsTooltip content={<CustomTooltip />} />
                     </PieChart>
-                  ) : chartIdx === 1 ? (
-                    <BarChart data={results.chartData} layout="vertical" margin={{ left: -20, right: 20 }}>
+                  ) : chartIndex === 1 ? (
+                    <RadialBarChart cx="50%" cy="50%" innerRadius="15%" outerRadius="100%" barSize={12} data={results.chartData}>
+                      <RadialBar background={{ fill: '#171717' }} dataKey="value" cornerRadius={10}>
+                         {results.chartData.map((e, i) => <Cell key={i} fill={e.fill} />)}
+                      </RadialBar>
+                      <RechartsTooltip content={<CustomTooltip />} />
+                    </RadialBarChart>
+                  ) : chartIndex === 2 ? (
+                    <BarChart data={results.chartData} layout="vertical" margin={{ left: -20, right: 30 }}>
                       <XAxis type="number" hide />
                       <YAxis dataKey="name" type="category" hide />
-                      <Bar dataKey="value" radius={[0, 10, 10, 0]}>
-                        {results.chartData.map((e, i) => <Cell key={i} fill={e.color} />)}
+                      <Bar 
+                        dataKey="value" 
+                        radius={[0, 10, 10, 0]}
+                        activeBar={false}
+                      >
+                        {results.chartData.map((e, i) => <Cell key={i} fill={e.color} fillOpacity={1} />)}
                       </Bar>
                       <RechartsTooltip content={<CustomTooltip />} />
                     </BarChart>
+                  ) : chartIndex === 3 ? (
+                    <Treemap 
+                      data={results.chartData} 
+                      dataKey="value" 
+                      aspectRatio={16/9} 
+                      stroke="#000" 
+                      content={<CustomizedTreemapContent />}
+                    >
+                      <RechartsTooltip content={<CustomTooltip />} />
+                    </Treemap>
                   ) : (
                     <RadarChart cx="50%" cy="50%" outerRadius="80%" data={results.chartData}>
                       <PolarGrid stroke="#222" />
                       <PolarAngleAxis dataKey="name" tick={{ fill: '#444', fontSize: 8, fontWeight: 900 }} />
-                      <Radar name="Amount" dataKey="value" stroke="#10b981" fill="#10b981" fillOpacity={0.5} />
+                      <Radar name="Allocation" dataKey="value" stroke="#10b981" fill="#10b981" fillOpacity={0.5} />
                       <RechartsTooltip content={<CustomTooltip />} />
                     </RadarChart>
                   )}
                </ResponsiveContainer>
              </div>
-             <div className="mt-4 text-center text-[8px] font-black text-neutral-800 uppercase tracking-[0.5em] animate-pulse">Swipe to rotate viewports</div>
+             <div className="mt-8 text-center text-[8px] font-black text-neutral-800 uppercase tracking-[0.4em] animate-pulse">Swipe lateral to rotate viewports</div>
           </section>
         </div>
       </main>
 
-      {/* Footer */}
       <footer className="fixed bottom-0 inset-x-0 glass py-3 px-6 border-t border-white/5 flex justify-between items-center text-[9px] font-black uppercase text-neutral-600 tracking-widest">
-        <div className="flex items-center"><span className="w-1.5 h-1.5 rounded-full bg-emerald-500 mr-2"></span> ARCH_SECURE_V5</div>
-        <div>LOCAL_SYNC: ACTIVE</div>
+        <div>ARCH_v12.0_PRODUCTION</div>
+        <div className="flex items-center space-x-2">
+          <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></div>
+          <span>LOCAL_SYNC: ACTIVE</span>
+        </div>
       </footer>
     </div>
   );

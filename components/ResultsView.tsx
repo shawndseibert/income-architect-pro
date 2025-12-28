@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { CalculatedResults, TimeFrame, IncomeState } from '../types.ts';
 import { 
@@ -49,6 +48,41 @@ const CustomTooltip = ({ active, payload, label }: any) => {
     );
   }
   return null;
+};
+
+const CustomizedTreemapContent = (props: any) => {
+  const { x, y, width, height, name, color } = props;
+  return (
+    <g>
+      <rect
+        x={x}
+        y={y}
+        width={width}
+        height={height}
+        style={{
+          fill: color || '#10b981',
+          stroke: '#000',
+          strokeWidth: 2,
+          strokeOpacity: 0.4,
+        }}
+      />
+      {width > 45 && height > 25 && (
+        <text
+          x={x + width / 2}
+          y={y + height / 2}
+          textAnchor="middle"
+          dominantBaseline="middle"
+          fill="#fff"
+          stroke="none"
+          fontSize={width < 70 ? 8 : 10}
+          fontWeight="900"
+          style={{ pointerEvents: 'none', textTransform: 'uppercase', opacity: 0.95 }}
+        >
+          {name}
+        </text>
+      )}
+    </g>
+  );
 };
 
 export const ResultsView: React.FC<Props> = ({ results, income }) => {
@@ -126,7 +160,7 @@ export const ResultsView: React.FC<Props> = ({ results, income }) => {
   };
   const handleTouchEnd = (e: React.TouchEvent) => {
     if (!touchStart.current) return;
-    const touchEnd = e.changedTouches[0].clientX;
+    const touchEnd = e.targetTouches[0].clientX;
     const diff = touchStart.current - touchEnd;
     if (diff > 50) nextChart();
     if (diff < -50) prevChart();
@@ -171,10 +205,10 @@ export const ResultsView: React.FC<Props> = ({ results, income }) => {
         
         <span className="text-xs uppercase tracking-[0.2em] font-black text-emerald-500/70 mb-2 block">Take-Home ({period})</span>
         <div className="flex flex-col">
-          <h2 className="text-4xl md:text-6xl font-black text-white glow-text-green retro-mono mb-4 break-all">
+          <h2 className="text-4xl md:text-6xl font-black text-white glow-text-green leading-[0.85] retro-mono mt-2 mb-4 break-all">
             ${displayData.takeHome.toLocaleString(undefined, { maximumFractionDigits: 0 })}
           </h2>
-          <div className="flex items-center space-x-2 -mt-2 mb-4">
+          <div className="flex items-center space-x-2">
              <span className="text-[10px] uppercase font-black text-emerald-500/50 tracking-tighter">Liquid Capital Remaining</span>
           </div>
         </div>
@@ -274,7 +308,11 @@ export const ResultsView: React.FC<Props> = ({ results, income }) => {
                      dataKey="value"
                      nameKey="name"
                      cornerRadius={10}
-                   />
+                   >
+                     {chartData.map((entry, index) => (
+                       <Cell key={`cell-${index}`} fill={entry.color} />
+                     ))}
+                   </RadialBar>
                    <Tooltip content={<CustomTooltip />} />
                  </RadialBarChart>
                ) : activeChart.type === 'BAR' ? (
@@ -285,7 +323,12 @@ export const ResultsView: React.FC<Props> = ({ results, income }) => {
                       content={<CustomTooltip />}
                       cursor={{ fill: 'rgba(255,255,255,0.05)' }}
                     />
-                    <Bar dataKey="value" nameKey="name" radius={[0, 10, 10, 0]}>
+                    <Bar 
+                      dataKey="value" 
+                      nameKey="name" 
+                      radius={[0, 10, 10, 0]}
+                      activeBar={{ fillOpacity: 0.75 }}
+                    >
                        {chartData.map((entry, index) => (
                          <Cell key={`cell-${index}`} fill={entry.color} />
                        ))}
@@ -297,7 +340,7 @@ export const ResultsView: React.FC<Props> = ({ results, income }) => {
                     dataKey="value"
                     aspectRatio={16 / 9}
                     stroke="#000"
-                    fill="#10b981"
+                    content={<CustomizedTreemapContent />}
                   >
                     <Tooltip content={<CustomTooltip />} />
                   </Treemap>
