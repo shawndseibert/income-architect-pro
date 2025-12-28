@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Expense, TimeFrame } from '../types.ts';
 import { FREQUENCY_OPTIONS } from '../constants.ts';
@@ -97,6 +96,10 @@ interface RowProps {
 
 const ExpenseRow: React.FC<RowProps> = ({ exp, parentId, expenses, onUpdate, maxExpense, triggerAdd }) => {
   const [isAddingSub, setIsAddingSub] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [tempLabel, setTempLabel] = useState(exp.label);
+  const [tempAmount, setTempAmount] = useState(exp.amount);
+
   const displayTotal = getRowDisplayTotal(exp);
   const isContainer = exp.amount === 0;
 
@@ -119,6 +122,19 @@ const ExpenseRow: React.FC<RowProps> = ({ exp, parentId, expenses, onUpdate, max
       return findAndAdd(e);
     });
     onUpdate(updated);
+  };
+
+  const saveEdit = () => {
+    const updated = expenses.map(e => {
+      const findAndUpdate = (item: Expense): Expense => {
+        if (item.id === exp.id) return { ...item, label: tempLabel, amount: tempAmount };
+        if (item.subItems) return { ...item, subItems: item.subItems.map(findAndUpdate) };
+        return item;
+      };
+      return findAndUpdate(e);
+    });
+    onUpdate(updated);
+    setIsEditing(false);
   };
 
   const removeExpense = () => {
@@ -147,7 +163,7 @@ const ExpenseRow: React.FC<RowProps> = ({ exp, parentId, expenses, onUpdate, max
   return (
     <div className={`space-y-1 ${parentId ? 'ml-6 border-l border-neutral-800 pl-4 mt-1' : ''}`}>
       <div className="glass group p-3 md:p-4 rounded-xl flex items-center justify-between border-transparent hover:border-emerald-500/20 transition-all">
-        <div className="flex items-center space-x-3 min-w-0">
+        <div className="flex items-center space-x-3 min-w-0 flex-grow">
           <div 
             className="relative w-6 h-6 rounded-lg overflow-hidden shrink-0 border border-white/10 shadow-lg cursor-pointer ring-1 ring-white/5 transition-transform active:scale-95"
             style={{ backgroundColor: exp.color }}
@@ -159,31 +175,67 @@ const ExpenseRow: React.FC<RowProps> = ({ exp, parentId, expenses, onUpdate, max
               className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
             />
           </div>
-          <div className="min-w-0">
-            <p className={`text-sm font-black truncate ${isContainer ? 'text-emerald-500' : 'text-neutral-200'}`}>{exp.label}</p>
-            <p className="text-[9px] uppercase tracking-widest text-neutral-600 font-black">{exp.frequency}</p>
-          </div>
-        </div>
-        <div className="flex items-center space-x-2 shrink-0">
-          <span className="retro-mono text-xs md:text-sm text-neutral-400 font-bold mr-1">
-            ${displayTotal.toLocaleString(undefined, { maximumFractionDigits: 0 })}
-          </span>
           
-          {(isContainer || parentId) && (
+          {isEditing ? (
+            <div className="flex flex-col sm:flex-row gap-2 flex-grow min-w-0">
+               <input 
+                 className="bg-neutral-950 border border-emerald-500/30 rounded-lg px-2 py-1 text-sm outline-none text-white w-full" 
+                 value={tempLabel} 
+                 onChange={e => setTempLabel(e.target.value)} 
+                 autoFocus
+               />
+               {!isContainer && (
+                 <input 
+                   type="number"
+                   className="bg-neutral-950 border border-emerald-500/30 rounded-lg px-2 py-1 text-sm outline-none text-white w-full sm:w-24 retro-mono" 
+                   value={tempAmount} 
+                   onChange={e => setTempAmount(parseFloat(e.target.value) || 0)}
+                 />
+               )}
+            </div>
+          ) : (
+            <div className="min-w-0">
+              <p className={`text-sm font-black truncate ${isContainer ? 'text-emerald-500' : 'text-neutral-200'}`}>{exp.label}</p>
+              <p className="text-[9px] uppercase tracking-widest text-neutral-600 font-black">{exp.frequency}</p>
+            </div>
+          )}
+        </div>
+
+        <div className="flex items-center space-x-2 shrink-0 ml-2">
+          {!isEditing && (
+            <span className="retro-mono text-xs md:text-sm text-neutral-400 font-bold mr-1">
+              ${displayTotal.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+            </span>
+          )}
+
+          {isEditing ? (
+            <button onClick={saveEdit} className="w-7 h-7 flex items-center justify-center rounded-xl bg-emerald-600 text-white shadow-lg active:scale-90 transition-all">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="4"><polyline points="20 6 9 17 4 12"></polyline></svg>
+            </button>
+          ) : (
+            <button onClick={() => { setTempLabel(exp.label); setTempAmount(exp.amount); setIsEditing(true); }} className="w-7 h-7 flex items-center justify-center rounded-xl text-neutral-700 hover:bg-emerald-600/10 hover:text-emerald-500 transition-all opacity-0 group-hover:opacity-100">
+               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+            </button>
+          )}
+
+          {(isContainer || parentId) && !isEditing && (
             <button
               onClick={() => triggerAdd ? triggerAdd() : setIsAddingSub(!isAddingSub)}
               className="w-7 h-7 flex items-center justify-center rounded-xl bg-emerald-600/5 text-emerald-500 hover:bg-emerald-600 hover:text-white transition-all shadow-sm"
-              title="Add Sibling/Sub-item"
             >
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="4"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
             </button>
           )}
 
           <button
-            onClick={removeExpense}
+            onClick={isEditing ? () => setIsEditing(false) : removeExpense}
             className="w-7 h-7 flex items-center justify-center rounded-xl text-neutral-700 hover:bg-red-500/10 hover:text-red-500 transition-all"
           >
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+            {isEditing ? (
+               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="4"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+            ) : (
+               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+            )}
           </button>
         </div>
       </div>
